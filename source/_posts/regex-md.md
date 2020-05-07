@@ -26,21 +26,45 @@ tags:
 
 - 匹配：圆括号()可以用来定义操作符的范围和优先度。例如，gr(a|e)y等价于gray|grey，(grand)?father匹配father和grandfather。上述这些构造子都可以自由组合，因此H(ae?|ä)ndel和H(a|ae|ä)ndel是相同的，表示{"Handel", "Haendel", "Händel"}。
 
-&emsp;&emsp;表达式全集
+## 表达式全集
 
 ![查看](/regex-md/regex.png)
 
-&emsp;&emsp;元字符
+## 元字符
 
 ![查看](/regex-md/regex-echar.png)
 
-&emsp;&emsp;重复
+## 重复
 
-![查看](/regex-md/regex-regex-repetition.png)
+![查看](/regex-md/regex-repetition.png)
 
-&emsp;&emsp;优先权
+## 优先权
 
 ![查看](/regex-md/regex_order.png)
+
+# 匹配原理
+
+&emsp;&emsp;实现正则表达式引擎的有两种方式：DFA 自动机（确定型有穷自动机）和 NFA 自动机（不确定型有穷自动机）。DFA 自动机的时间复杂度是线性的，更加稳定，但是功能有限。而 NFA 的时间复杂度比较不稳定，有时候很好，有时候不怎么好，好不好取决于你写的正则表达式。但是胜在 NFA 的功能更加强大，所以包括 Java 、.NET、Perl、Python、Ruby、PHP 等语言都使用了 NFA 去实现其正则表达式。
+
+## DFA
+
+&emsp;&emsp;DFA从匹配文本入手，从左到右，每个字符不会匹配两次，它的时间复杂度是多项式的，所以通常情况下，它的速度更快，但支持的特性很少，不支持捕获组、各种引用等等。举例说明：字符串：`after tonight`,表达式：`to(nite|nighta|night)`;从a开始匹配t，直到第一个t跟正则的t匹配，但e跟o匹配失败，继续，直到文本里面的第二个 t 匹配正则的t，接着o与o匹配，n的时候发现正则里面有三个可选匹配，开始并行匹配，直到文本中的g使得第一个可选条件不匹配，继续，直到最后匹配。
+
+## NFA
+
+&emsp;&emsp;NFA 是以正则表达式为基准去匹配的。也就是说，NFA 自动机会读取正则表达式的一个一个字符，然后拿去和目标字符串匹配，匹配成功就换正则表达式的下一个字符，否则继续和目标字符串的下一个字符比较。
+
+&emsp;&emsp;以正则表达式`ab*c`匹配字符串 <font color="#00dddd">a</font><font color="#dd00dd">a</font>bc为例：
+
+> 第一步：用a匹配字符<font color="#00dddd">a</font>，匹配成功；
+> 第二步：用b\*匹配字符<font color="#dd00dd">a</font>，匹配失败；
+> 第三步：用c匹配字符<font color="#dd00dd">a</font>，匹配失败；
+> 第四步：回溯，表达式回退到a,用a匹配字符<font color="#dd00dd">a</font>，匹配成功；
+> 第五步：用b\*匹配字符b，匹配成功；
+> 第六步：用b\*匹配字符c，匹配失败；
+> 第七步：用c匹配字符c，匹配成功；
+
+&emsp;&emsp;可以看到，在第三步匹配失败的时候发生了**回溯**，表达式回到了开头从字符串的下一个位置重新匹配。
 
 # java正则表达式
 
@@ -177,9 +201,8 @@ if(matcher.find()){
 
 &emsp;&emsp;分组，用小括号来指定子表达式(也叫做分组)，可以指定这个子表达式的重复次数，你也可以对子表达式进行其它一些操作。
 
-> 默认情况下，每个分组都有一个组号，规则是：从左向右，以分组的左括号为标志，第一个出现的分组的组号为 1，第二个为 2，以此类推；
-> 后向引用用于重复搜索前面某个分组匹配的文本。例如，\1 代表分组1匹配的文本。注意，\1 代表的是分组1匹配到的文本，而不是分组1的表达式，其次，\1并不是分组；
-> 可以指定子表达式的组名,语法：(?<groupName>regex)，其中，groupName即为分组名，<>也可以替换成''。
+1, 默认情况下，每个分组都有一个组号，规则是：从左向右，以分组的左括号为标志，第一个出现的分组的组号为1，第二个为2，以此类推；
+2, 后向引用用于重复搜索前面某个分组匹配的文本。例如，\1 代表分组1匹配的文本。注意，\1 代表的是分组1匹配到的文本，而不是分组1的表达式，其次，\1并不是分组；
 
 ```java
 Pattern pattern = Pattern.compile("(\\w+)\\.+?(\\w+)");
@@ -200,16 +223,6 @@ Matcher matcher = pattern.matcher("ferry ferry");
 logger.info("{}", matcher.groupCount());
 if(matcher.find()){
     logger.info(matcher.group(1));
-}
-```
-
-```java
-Pattern pattern = Pattern.compile("\\b(?<name>\\w+)\\b\\s\\1");
-Matcher matcher = pattern.matcher("ferry ferry");
-logger.info("{}", matcher.groupCount());
-if(matcher.find()){
-    logger.info(matcher.group(1));
-    logger.info(matcher.group("name"));
 }
 ```
 
@@ -274,7 +287,7 @@ matcher.reset("1ferry");
 logger.info("{}", matcher.find());
 ```
 
-## 贪婪和懒惰
+## 贪婪,懒惰与独占
 
 - **贪婪**
 
@@ -304,7 +317,7 @@ while (matcher.find()){
 // 匹配的结果有三个，11，22，99
 ```
 
-- **The match that begins earliest wins**
+- **最先开始的匹配拥有最高优先权**
 
 ```java
 Pattern pattern = Pattern.compile("\\d.*?\\d"); // 匹配两个数字，数字中间有零或多个字符
@@ -315,11 +328,37 @@ while (matcher.find()){
 // 匹配结果有两个，1fer2,2ry9
 ```
 
-&emsp;&emsp;最先开始的匹配拥有最高优先权。上述正则表达式虽然是懒惰模式，理论上应该匹配22，99，但是第一个出现的数字是1，所以1具有优先匹配权。
+&emsp;&emsp;上述正则表达式虽然是懒惰模式，理论上应该匹配22，99，但是第一个出现的数字是1，所以1具有优先匹配权。
 
 - **懒惰限定符**
 
 ![查看](/regex-md/regex-lazy.png)
+
+- **独占**
+
+&emsp;&emsp;在独占模式下，表达式尽可能长的匹配字符串，若匹配失败则结束匹配而不会回溯。独占表达式就是在重复表达式后面添加一个`+`。
+
+```java
+// 独占模式
+Pattern pattern = Pattern.compile("s*+\\w");  // 此表达式相当于匹配零或多个s,最后一个字符不能是s结尾
+Matcher matcher = pattern.matcher("ss");
+logger.info("{}",matcher.matches());  // false
+matcher.reset("s4");
+logger.info("{}", matcher.matches());  // true
+```
+
+## 平衡组
+
+&emsp;&emsp;平衡组，故名思义，平衡即对称，主要是结合几种正则语法规则，提供对配对出现的嵌套结构的匹配。平衡组有狭义与广义两种定义，狭义平衡组指(?Expression) 语法，而广义平衡组并不是固定的语法规则，而是几种语法规则的综合运用，我们平时所说的平衡组通常指的是广义平衡组。
+
+&emsp;&emsp;下面是可能会用到的语法结构：
+
+> (?<group\>) 把捕获的内容命名为group,并压入堆栈
+> (?<-group>) 从堆栈中弹出最后压入堆栈的名为group的捕获内容，如果堆栈本来为空，则本分组的匹配失败
+> (?(group)yes|no) 如果堆栈上存在以名为group的捕获内容的话，继续匹配yes部分的表达式，否则继续匹配no部分
+> (?!) 顺序否定环视，由于没有后缀表达式，试图匹配总是失败
+
+
 
 # 练习
 
