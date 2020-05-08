@@ -701,6 +701,91 @@ df -h
 ```
 
 &emsp;&emsp;使用心得，一般情况下，如果磁盘空间满了，我会先用`df -h`查看文件系统的使用情况，然后使用`du`命令跟踪定位到具体的某个或某些大文件，并根据实际情况清理释放磁盘空间。
-                
+
+### CentOS7防火墙设置
+
+&emsp;&emsp;在旧版本的CentOS中，是使用 iptables 命令来设置防火墙的。但是，从CentOS7开始，默认就没有安装iptables，而是改用firewall来配置防火墙。修改了防火墙的设置，必须要重启防火墙才能生效。
+
+- **启动,停止和重启**
+
+```bash
+systemctl start firewalld
+systemctl stop firewalld
+systemctl restart firewalld
+```
+
+- **添加端口**
+
+```bash
+firewall-cmd --zone=public --add-port=80/tcp --permanent
+```
+
+- **更新防火墙规则**
+
+```bash
+firewall-cmd --reload
+```
+
+- **查看端口是否开放**
+
+```bash
+firewall-cmd --zone=public --query-port=80/tcp
+```
+
+- **删除**
+
+```bash
+firewall-cmd --zone=public --remove-port=80/tcp --permanent
+```
+
+- **查看防火墙状态**
+
+```bash
+firewall-cmd --state
+```
+
+- **查看防火墙所有设置**
+
+```bash
+firewall-cmd --list-all
+```
+
+- **查看所有打开的端口**
+
+```bash
+firewall-cmd --zone=public --list-ports
+```
+
+- **查看区域信息**
+
+```bash
+firewall-cmd --get-active-zones
+```
+
+- **查看指定接口所属区域**
+
+```bash
+firewall-cmd --get-zone-of-interface=eth0
+```
+
+- **拒绝所有包**
+
+```bash
+firewall-cmd --panic-on
+```
+
+- **取消拒绝状态**
+
+```bash
+firewall-cmd --panic-off
+```
+
+- **查看是否拒绝**
+
+```bash
+firewall-cmd --query-panic
+```
+
+
 
 
