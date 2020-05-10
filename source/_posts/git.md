@@ -20,7 +20,12 @@ git config --global user.name
 git config --local --list
 ```
 
-- 配置优先级
+### 删除配置
+
+```bash
+git config --local --unset user.name
+```
+
 &emsp;&emsp;作用域越小，优先级越高，即`local`的配置会覆盖`global`的配置；`global`的配置会覆盖`system`的配置。
 
 ### 用户信息
@@ -54,13 +59,53 @@ helper = store/cache
 
 ### 本文编辑器
 
+&&emsp;&emsp;设置文本编辑器以便git在调用文本编辑器时调用我们指定的编辑器工作。
 
+- 方式一：命令行
+
+```bash
+git config --global core.editor "subl -w"
+```
+
+- 方式二：修改配置文件(～/.gitconfig)
+
+```bash
+[core]
+	editor = subl -w
+```
+
+&emsp;&emsp;这里使用`-w`参数是为了让git等待编辑器完成编辑操作并且保存退出后才可以进行下一步操作。在window是使用sublime可能还需要将sublime配置环境变量，且如果exe文件中有空格是需要使用单引号将括起来（`git config --global core.editor “‘sublime text.exe’ -w”`）。使用其他的文本编辑器作为git的默认编辑器方法大致相同。
+
+### 设置别名
+
+&emsp;&emsp;对于一些常用的命令我们可以设置别名来使用，协助我们高效进行版本控制。
+
+```bash
+git config --local alias.s status
+git config --local alias.last 'log -n1'
+```
+
+&emsp;&emsp;此时，在这个项目中就可以使用`git s`代替`git status`查看git状态了，可以使用`git last`代替`git log -n1`查看最后一次提交的内容了。
+
+```bash
+git config --local alias.k '!gitk'
+```
+
+&emsp;&emsp;没有`!`的别名是作为git命令使用的，使用`!`开头的命令则调用的是外部命令。如上述，可以使用`git k`代替`gitk`命令。
+
+```bash
+git config --local alias.lastoneline '!sh -c "git log --oneline --graph -n$1" -'
+git config --local alias.last '!f() { git log --graph -n$1; }; f'
+```
+
+&emsp;&emsp;设置别名传递参数可以通过shell调用git或者通过函数调用git。使用：`git last 5`，`git lastoneline 3`。
 
 ## git应用
 
 ### git init
 
 - 方式一：
+
 ```bash
 mkdir git_study
 cd git_study/
@@ -72,6 +117,7 @@ ls -al
 
 
 - 方式二：
+
 ```bash
 git init git_study
 cd git_study/
