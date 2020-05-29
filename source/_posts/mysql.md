@@ -498,5 +498,21 @@ query_cache_type=0
 query_cache_size=0
 ```
 
+#### 设置时区
+
+&emsp;&emsp;mysql中默认使用的SYSTEM时区，即EST时区，EST时区要比北京时间（东八区）慢13个小时。我们一般使用北京时间也就是东八区。
+
+- 查询时区
+
+```sql
+show variables like '%time_zone%';
+```
+
+- 设置时区(vi /etc/my.cnf)重启服务
+
+```bash
+[mysqld]
+default-time_zone = '+8:00'
+```
 
 &emsp;&emsp;未完待续。。。。。
