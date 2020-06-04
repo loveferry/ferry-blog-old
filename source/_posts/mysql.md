@@ -342,7 +342,7 @@ dmesg | grep -i scheduler
 cat /sys/block/sda/queue/scheduler
 ```
 
-&emsp&emsp;如果sda目录不存在，就找vda目录。
+&emsp;&emsp;如果sda目录不存在，就找vda目录。
 
 
 - swap分区的设置
@@ -395,7 +395,7 @@ useradd -g mysql mysql -s /sbin/nologin
 tar -zxvf mysql-8.0.18-linux-glibc2.12-x86_64.tar.gz
 ```
 
-&emsp;&emsp;乳沟解压出错，但是之前md5校验没问题，那么大概率是我们的系统缺少什么依赖没有安装，按照shell提示的错误信息解决即可。
+&emsp;&emsp;如果解压出错，但是之前md5校验没问题，那么大概率是我们的系统缺少什么依赖没有安装，按照shell提示的错误信息解决即可。
 
 - 软连接，方便日后升级
 

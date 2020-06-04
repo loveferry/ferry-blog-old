@@ -181,7 +181,7 @@ tar zxvf apache-tomcat-8.5.35.tar.gz
 
 ### git安装
 
-&emps;&emsp;git，非常先进的分布式版本控制系统。
+&emsp;&emsp;git，非常先进的分布式版本控制系统。
 
 #### linux安装git
 
@@ -374,7 +374,7 @@ cp redis-server redis-cli /usr/local/bin/
 - 修改redis的配置文件
 
 ```bash
-vi /usr/local/bin/usr/local/redis-4.0.14/redis.conf
+vi /usr/local/redis-4.0.14/redis.conf
 ```
 
 ```bash
@@ -454,7 +454,7 @@ systemctl disable redisd.service
 
 ### linux安装jenkins
 
-- 安装jenkins
+#### yum 安装 jenkins 
 
 ```bash
 sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
@@ -477,6 +477,26 @@ sudo yum install -y jenkins
 systemctl start jenkins
 ```
 
+#### 下载war包运行
+
+&emsp;&emsp;下载[稳定版war包](https://updates.jenkins-ci.org/download/war/)，然后使用命令`nohup java -jar jenkins.war --httpPort=8080 > jenkins.log &`运行jenkins。
+
+#### 配置
+
+&emsp;&emsp;jenkins默认的工作目录是`~/.jenkins/`目录，我们可以在运行jenkins之前配置环境变量指定jenkins的工作目录。
+
+- vi /etc/profile
+
+```bash
+export JENKINS_HOME=/usr/local/jenkins
+```
+
+&emsp;&emsp;保存退出后执行
+
+```bash
+source /etc/profile
+```
+
 - 查看jenkins进程信息
 
 ```bash
@@ -495,23 +515,29 @@ ps -aux |grep jenkins|grep -v grep
 cat /var/lib/jenkins/secrets/initialAdminPassword
 ```
 
-- 插件的安装
-
 ![plugin](/software-install/jenkins_plugin.png)
 
-&emsp;&emsp;一般情况下我们点击左边的"安装推荐的插件"就好了。
+&emsp;&emsp;怎么选都可以，按照推荐的安装插件省事，但是会安装一堆我不需要的插件，不喜欢，这里我选择的是"选择插件来安装"。在插件列表我只选择了一个`Localization: Chinese (Simplified)`插件，这个插件是简体中文语言包。
 
 - 创建管理员用户
 
-&emsp;&emsp;按照提示创建就好了。创建好了之后后面的一路默认就好了。
+&emsp;&emsp;按照提示创建就好了。创建好了之后后面的一路默认就好了。管理员账号创建好了之后 jenkins 的初始化基本完成了，此时我们可以重启 jenkins 让中文插件生效（重启：在jenkins服务的访问地址后加restart，例如：http:localhost:8080/restart）。
 
-- 额外的插件安装
+- 全局工具配置
+
+> jdk:指定服务器的jdk路径，使用服务器的jdk
+> maven:指定服务器的maven路径，使用服务器的maven
+
+![plugin](/software-install/jenkins_global_settings.png)
+
+- 插件安装
 
 &emsp;&emsp;系统管理-插件管理-可选插件：下面是我另外安装的插件列表:
 
-> Localization: Chinese (Simplified)：Jenkins 及其插件的简体中文语言包。
-> Git Parameter：参数化构建git项目
-> Maven Integration：maven项目
+> Role-based Authorization Strategy：jenkins 用户权限角色控制插件；
+> Publish over SSH：允许 Jenkins 所在机器通过SSH服务登录到远程机执行脚本；
+> Git Parameter：参数化构建git项目。根据branch,tag,commit等信息打包发布。在发布时，可以自己选择分支来进行发布；
+> Maven Integration：在构建项目时可以直接构建一个maven项目。
 
 - JDK和MAVEN的路径配置
 
