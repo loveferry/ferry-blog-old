@@ -38,6 +38,12 @@ databases 16
 requirepass foobared
 ```
 
+- 查看 redis 当前使用的配置文件目录
+
+```bash
+redis-cli info | grep config
+```
+
 ### redis 数据结构
 
 &emsp;&emsp;redis 一共有五种数据结构，分别为String、List、hash、Set、Zset。
