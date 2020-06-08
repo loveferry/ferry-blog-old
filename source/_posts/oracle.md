@@ -165,7 +165,7 @@ unzip linuxx64_12201_database.zip
 
 &emsp;&emsp;这里选择 oracle12c 的linux 64位的版本。注意，官网下载需要登录，先登录，然后点击下载，在浏览器中复制下载链接使用wget进行下载，`-b`参数表明wget进行后台下载，`-c`参数表明断点续传，`-O`参数为下载的文件命名。`AuthParam`参数有时效性，是oracle官网登录后点击下载然后生成的，所以这个下载链接需要自己去生成。
 
-![查找](/oracle/oracle-install-linux.png)
+![查找](oracle-install-linux.png)
 
 - 解压
 
