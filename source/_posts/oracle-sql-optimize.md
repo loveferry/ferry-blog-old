@@ -41,6 +41,24 @@ select count(distinct t.sex) from user t
 select count(distinct t.sex) / count(*) from user t
 ```
 
+## 直方图
+
+&emsp;&emsp;当某个列的基数很低，该列的数据分布就会不均衡。数据分布不均衡，就会导致在查询该列时要么走索引，要么走全表扫描，这时候很容易走错执行计划。
+
+&emsp;&emsp;**如果没有对基数低的列收集直方图统计信息，基于成本的优化器（CBO）会认为该列的数据分布是均衡的。**
+
+&emsp;&emsp;**直方图是用来帮助CBO在对基数很低、数据分布不均衡的列进行Rows估算的时候，可以得到更精确的Rows。**
+
+&emsp;&emsp;什么样的列应该收集直方图？该列出现在where条件中，列的选择性小于1%并且该列没有收集过直方图。
+
+## 回表
+
+&emsp;&emsp;当对一个列创建索引之后，索引会包含该列的键值以及键值对应行所在的rowid。
+
+&emsp;&emsp;**通过索引中记录的rowid访问表中的数据就叫回表。回表一般是单块读（一个rowid对应一个数据块），回表次数太多会严重影响SQL性能。如果回表次数太多，就不应该走索引，应该直接走全表扫描。**
+
+&emsp;&emsp;`arraysize`参数：表示Oracle服务器每次传输多少行数据到客户端。假设`arraysize=15`，如果一个数据块有150行数据，那么每次传输15行，需要读取这个数据块10次才能读完，此时逻辑读被放大了。为了消除arraysize对逻辑读的影响，可以将参数调大。
+
 # 全自动优化脚本
 
 ## 抓住必须创建索引的列
@@ -136,4 +154,34 @@ where t1.selectivity >= 20
                and c.name = t1.column_name);
 ```
 
+## 抓住必须创建直方图的列
+
+```sql
+select a.owner,
+       a.table_name,
+       a.column_name,
+       b.num_rows,
+       a.num_distinct,
+       trunc(a.num_distinct / b.num_rows * 100, 2) selectivity,
+       'Need Gather Histogram'                     notice
+from dba_tab_col_statistics a,
+     dba_tables b
+where a.owner = 'RETAIL'
+  and a.table_name = 'CON_CONTRACT'
+  and a.owner = b.owner
+  and a.table_name = b.table_name
+  and a.num_distinct / b.num_rows < 0.01
+  and (a.owner, a.table_name, a.column_name) in
+      (select r.name owner, o.name table_name, c.name column_name
+       from sys.col_usage$ u,
+            sys.obj$ o,
+            sys.col$ c,
+            sys.user$ r
+       where o.obj# = u.obj#
+         and c.obj# = u.obj#
+         and c.col# = u.intcol#
+         and r.name = a.owner
+         and o.name = a.table_name)
+  and a.histogram = 'NONE';
+```
 
