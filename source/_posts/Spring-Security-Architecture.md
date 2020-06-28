@@ -6,6 +6,7 @@ tags:
     - Java
     - Spring Security
 categories: Spring Security
+---
 
 &emsp;&emsp;`Spring Security`是Spring的安全框架，它能够帮助我们完成用户的认证和访问控制，具体的来说呢就是帮助我们判断当前请求是否需要认证，如果需要认证那么提供的认证信息是否合法有效，提供的认证信息是否具有足够的权限访问当前请求需要的资源。 
 
