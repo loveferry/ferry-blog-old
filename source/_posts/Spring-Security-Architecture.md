@@ -64,220 +64,219 @@ public class ProviderManager implements AuthenticationManager, MessageSourceAwar
     /**
     * 日志对象
     */
-	private static final Log logger = LogFactory.getLog(ProviderManager.class);
-	
+    private static final Log logger = LogFactory.getLog(ProviderManager.class);
+    
     /**
     * 认证事件发布器，认证成功或者失败的通知机制
     */
-	private AuthenticationEventPublisher eventPublisher = new NullEventPublisher();
-	
-	/**
-	* 认证提供者列表，实际完成认证工作的列表
+    private AuthenticationEventPublisher eventPublisher = new NullEventPublisher();
+    
+    /**
+    * 认证提供者列表，实际完成认证工作的列表
     */
-	private List<AuthenticationProvider> providers = Collections.emptyList();
-	
-	/**
-	* 消息国际化的实现类，这里不做扩展
+    private List<AuthenticationProvider> providers = Collections.emptyList();
+    
+    /**
+    * 消息国际化的实现类，这里不做扩展
     */
-	protected MessageSourceAccessor messages = SpringSecurityMessageSource.getAccessor();
-	
-	/**
-	* 父级认证管理器，相当于一个默认的认证程序，如果上面的认证提供者列表中没有一个完成认证工作，那么就会尝试使用这个认证管理器进行认证
+    protected MessageSourceAccessor messages = SpringSecurityMessageSource.getAccessor();
+    
+    /**
+    * 父级认证管理器，相当于一个默认的认证程序，如果上面的认证提供者列表中没有一个完成认证工作，那么就会尝试使用这个认证管理器进行认证
     */
-	private AuthenticationManager parent;
-	
-	/**
-	* 认证成功后是否擦除凭证信息
+    private AuthenticationManager parent;
+    
+    /**
+    * 认证成功后是否擦除凭证信息
     */
-	private boolean eraseCredentialsAfterAuthentication = true;
-
-	public ProviderManager(List<AuthenticationProvider> providers) {
-		this(providers, null);
-	}
-
+    private boolean eraseCredentialsAfterAuthentication = true;
+    
+    public ProviderManager(List<AuthenticationProvider> providers) {
+        this(providers, null); 
+    }
+    
     /**
     * 初始化对象的时候必须提供一个认证提供者的列表，父级的认证管理器可以为空
     */
-	public ProviderManager(List<AuthenticationProvider> providers,
-			AuthenticationManager parent) {
-		Assert.notNull(providers, "providers list cannot be null");
-		this.providers = providers;
-		this.parent = parent;
-		checkState();
-	}
-
+    public ProviderManager(List<AuthenticationProvider> providers,
+            AuthenticationManager parent) {
+        Assert.notNull(providers, "providers list cannot be null");
+        this.providers = providers;
+        this.parent = parent;
+        checkState();
+    }
+    
     /**
     * 属性设置完成后校验，父级认证管理器和认证提供者列表二者至少有一个不能为空，因为若都为空则无法通过此对象完成认证工作 
     */
-	public void afterPropertiesSet() throws Exception {
-		checkState();
-	}
+    public void afterPropertiesSet() throws Exception {
+        checkState();
+    }
 
-	private void checkState() {
-		if (parent == null && providers.isEmpty()) {
-			throw new IllegalArgumentException(
-					"A parent AuthenticationManager or a list "
-							+ "of AuthenticationProviders is required");
-		}
-	}
+    private void checkState() {
+        if (parent == null && providers.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "A parent AuthenticationManager or a list of AuthenticationProviders is required");
+        }
+    }
 
     /**
     * 认证过程
     */
-	public Authentication authenticate(Authentication authentication)
-			throws AuthenticationException {
-		Class<? extends Authentication> toTest = authentication.getClass();
-		AuthenticationException lastException = null;
-		Authentication result = null;
-		Authentication parentResult = null;
-		boolean debug = logger.isDebugEnabled();
-
-		for (AuthenticationProvider provider : getProviders()) {
-			if (!provider.supports(toTest)) {
-				continue;
-			}
-
-			if (debug) {
-				logger.debug("Authentication attempt using "
-						+ provider.getClass().getName());
-			}
-
-			try {
-				result = provider.authenticate(authentication);
-
-				if (result != null) {
-					copyDetails(authentication, result);
-					break;
-				}
-			}
-			catch (AccountStatusException e) {
-				prepareException(e, authentication);
-				// SEC-546: Avoid polling additional providers if auth failure is due to
-				// invalid account status
-				throw e;
-			}
-			catch (InternalAuthenticationServiceException e) {
-				prepareException(e, authentication);
-				throw e;
-			}
-			catch (AuthenticationException e) {
-				lastException = e;
-			}
+    public Authentication authenticate(Authentication authentication)
+            throws AuthenticationException {
+        Class<? extends Authentication> toTest = authentication.getClass();
+        AuthenticationException lastException = null;
+        Authentication result = null;
+        Authentication parentResult = null;
+        boolean debug = logger.isDebugEnabled();
+        
+        for (AuthenticationProvider provider : getProviders()) {
+            if (!provider.supports(toTest)) {
+                continue;
+            }
+            
+            if (debug) {
+                logger.debug("Authentication attempt using "
+                        + provider.getClass().getName());
+            }
+            
+            try {
+                result = provider.authenticate(authentication);
+                
+                if (result != null) {
+                    copyDetails(authentication, result);
+                    break;
+                }
+            }
+            catch (AccountStatusException e) {
+                prepareException(e, authentication);
+                // SEC-546: Avoid polling additional providers if auth failure is due to
+                // invalid account status
+                throw e;
+            }
+            catch (InternalAuthenticationServiceException e) {
+                prepareException(e, authentication);
+                throw e;
+            }
+            catch (AuthenticationException e) {
+                lastException = e;
+            }
 		}
 
-		if (result == null && parent != null) {
-			// Allow the parent to try.
-			try {
-				result = parentResult = parent.authenticate(authentication);
-			}
-			catch (ProviderNotFoundException e) {
-				// ignore as we will throw below if no other exception occurred prior to
-				// calling parent and the parent
-				// may throw ProviderNotFound even though a provider in the child already
-				// handled the request
-			}
-			catch (AuthenticationException e) {
-				lastException = e;
-			}
-		}
-
-		if (result != null) {
-			if (eraseCredentialsAfterAuthentication
-					&& (result instanceof CredentialsContainer)) {
-				// Authentication is complete. Remove credentials and other secret data
-				// from authentication
-				((CredentialsContainer) result).eraseCredentials();
-			}
-
-			// If the parent AuthenticationManager was attempted and successful than it will publish an AuthenticationSuccessEvent
-			// This check prevents a duplicate AuthenticationSuccessEvent if the parent AuthenticationManager already published it
-			if (parentResult == null) {
-				eventPublisher.publishAuthenticationSuccess(result);
-			}
-			return result;
-		}
-
-		// Parent was null, or didn't authenticate (or throw an exception).
-
-		if (lastException == null) {
-			lastException = new ProviderNotFoundException(messages.getMessage(
-					"ProviderManager.providerNotFound",
-					new Object[] { toTest.getName() },
-					"No AuthenticationProvider found for {0}"));
-		}
-
-		prepareException(lastException, authentication);
-
-		throw lastException;
-	}
+        if (result == null && parent != null) {
+            // Allow the parent to try.
+            try {
+                result = parentResult = parent.authenticate(authentication);
+            }
+            catch (ProviderNotFoundException e) {
+                // ignore as we will throw below if no other exception occurred prior to
+                // calling parent and the parent
+                // may throw ProviderNotFound even though a provider in the child already
+                // handled the request
+            }
+            catch (AuthenticationException e) {
+                lastException = e;
+            }
+        }
+        
+        if (result != null) {
+            if (eraseCredentialsAfterAuthentication
+                    && (result instanceof CredentialsContainer)) {
+                // Authentication is complete. Remove credentials and other secret data
+                // from authentication
+                ((CredentialsContainer) result).eraseCredentials();
+            }
+            
+            // If the parent AuthenticationManager was attempted and successful than it will publish an AuthenticationSuccessEvent
+            // This check prevents a duplicate AuthenticationSuccessEvent if the parent AuthenticationManager already published it
+            if (parentResult == null) {
+                eventPublisher.publishAuthenticationSuccess(result);
+            }
+            return result;
+        }
+        
+        // Parent was null, or didn't authenticate (or throw an exception).
+        
+        if (lastException == null) {
+            lastException = new ProviderNotFoundException(messages.getMessage(
+                "ProviderManager.providerNotFound",
+                new Object[] { toTest.getName() },
+                "No AuthenticationProvider found for {0}"));
+        }
+        
+        prepareException(lastException, authentication);
+        
+        throw lastException;
+    }
 
     /**
     * 将异常通过认证事件发布器发布出去 
     */
-	@SuppressWarnings("deprecation")
-	private void prepareException(AuthenticationException ex, Authentication auth) {
-		eventPublisher.publishAuthenticationFailure(ex, auth);
-	}
-
+    @SuppressWarnings("deprecation")
+    private void prepareException(AuthenticationException ex, Authentication auth) {
+        eventPublisher.publishAuthenticationFailure(ex, auth);
+    }
+    
     /**
     * 将需要认证的认证信息赋值到新的认证信息中
     */
-	private void copyDetails(Authentication source, Authentication dest) {
-		if ((dest instanceof AbstractAuthenticationToken) && (dest.getDetails() == null)) {
-			AbstractAuthenticationToken token = (AbstractAuthenticationToken) dest;
-
-			token.setDetails(source.getDetails());
-		}
-	}
-
+    private void copyDetails(Authentication source, Authentication dest) {
+        if ((dest instanceof AbstractAuthenticationToken) && (dest.getDetails() == null)) {
+            AbstractAuthenticationToken token = (AbstractAuthenticationToken) dest;
+            
+            token.setDetails(source.getDetails());
+        }
+    }
+    
     /**
     * 获取认证提供者
     */
-	public List<AuthenticationProvider> getProviders() {
-		return providers;
-	}
+    public List<AuthenticationProvider> getProviders() {
+        return providers;
+    }
     
-	/**
-	* 设置消息国际化 
+    /**
+    * 设置消息国际化 
     */
-	public void setMessageSource(MessageSource messageSource) {
-		this.messages = new MessageSourceAccessor(messageSource);
-	}
-
+    public void setMessageSource(MessageSource messageSource) {
+        this.messages = new MessageSourceAccessor(messageSource);
+    }
+    
     /**
     * 设置认证事件发布器
     */
-	public void setAuthenticationEventPublisher(
-			AuthenticationEventPublisher eventPublisher) {
-		Assert.notNull(eventPublisher, "AuthenticationEventPublisher cannot be null");
-		this.eventPublisher = eventPublisher;
-	}
-
+    public void setAuthenticationEventPublisher(
+            AuthenticationEventPublisher eventPublisher) {
+        Assert.notNull(eventPublisher, "AuthenticationEventPublisher cannot be null");
+        this.eventPublisher = eventPublisher;
+    }
+    
     /**
     * 设置是否在认证成功后将凭证信息擦除
     */
-	public void setEraseCredentialsAfterAuthentication(boolean eraseSecretData) {
-		this.eraseCredentialsAfterAuthentication = eraseSecretData;
-	}
-
+    public void setEraseCredentialsAfterAuthentication(boolean eraseSecretData) {
+        this.eraseCredentialsAfterAuthentication = eraseSecretData;
+    }
+    
     /**
     * 是否在认证成功后擦除凭证信息
     */
-	public boolean isEraseCredentialsAfterAuthentication() {
-		return eraseCredentialsAfterAuthentication;
-	}
-
+    public boolean isEraseCredentialsAfterAuthentication() {
+        return eraseCredentialsAfterAuthentication;
+    }
+    
     /**
     * 空的认证事件发布器
     */
-	private static final class NullEventPublisher implements AuthenticationEventPublisher {
-		public void publishAuthenticationFailure(AuthenticationException exception,
-				Authentication authentication) {
-		}
-
-		public void publishAuthenticationSuccess(Authentication authentication) {
-		}
-	}
+    private static final class NullEventPublisher implements AuthenticationEventPublisher {
+        public void publishAuthenticationFailure(AuthenticationException exception,
+                Authentication authentication) {
+        }
+        
+        public void publishAuthenticationSuccess(Authentication authentication) {
+        }
+    }
 }
 ```
 
