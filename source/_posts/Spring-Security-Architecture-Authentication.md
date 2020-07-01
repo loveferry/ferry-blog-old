@@ -34,8 +34,6 @@ public interface AuthenticationManager {
 
 &emsp;&emsp;AuthenticationManager的一个重要实现就是`ProviderManager`，一般情况下都是通过ProviderManager完成认证，接下来看看这个类能做些什么吧。
 
-## ProviderManager
-
 &emsp;&emsp;通过阅读源码上的注释可以了解到，它是将认证信息Authentication依次尝试AuthenticationProviders列表，如果响应结果不为空表示当前提供者有权决定认证请求，并且不再尝试其他提供者。如果后续提供者成功验证了请求，则将忽略较早的验证异常，并将使用成功的验证。如果没有后续提供者提供非空响应或new AuthenticationException，AuthenticationException则将使用最后收到的提供者。如果没有提供者返回非null的响应，或者表明它甚至可以处理an Authentication，ProviderManager则将抛出 ProviderNotFoundException。还可以设置一个parent的AuthenticationManager，如果没有配置的认证程序可以执行身份验证，也可以尝试使用此方法。但是通常不应该使用此功能。
 
 &emsp;&emsp;完整的看一下这个类。
@@ -135,51 +133,40 @@ public class ProviderManager implements AuthenticationManager, MessageSourceAwar
             if (!provider.supports(toTest)) {
                 continue;
             }
-            
             if (debug) {
-                logger.debug("Authentication attempt using "
-                        + provider.getClass().getName());
+                logger.debug("Authentication attempt using " + provider.getClass().getName());
             }
-            
             try {
                 result = provider.authenticate(authentication);
-                
                 if (result != null) {
                     copyDetails(authentication, result);
                     break;
                 }
-            }
-            catch (AccountStatusException e) {
+            }catch (AccountStatusException e) {
                 prepareException(e, authentication);
                 // SEC-546: Avoid polling additional providers if auth failure is due to
                 // invalid account status
                 throw e;
-            }
-            catch (InternalAuthenticationServiceException e) {
+            }catch (InternalAuthenticationServiceException e) {
                 prepareException(e, authentication);
                 throw e;
-            }
-            catch (AuthenticationException e) {
+            }catch (AuthenticationException e) {
                 lastException = e;
             }
 		}
-
         if (result == null && parent != null) {
             // Allow the parent to try.
             try {
                 result = parentResult = parent.authenticate(authentication);
-            }
-            catch (ProviderNotFoundException e) {
+            }catch (ProviderNotFoundException e) {
                 // ignore as we will throw below if no other exception occurred prior to
                 // calling parent and the parent
                 // may throw ProviderNotFound even though a provider in the child already
                 // handled the request
-            }
-            catch (AuthenticationException e) {
+            }catch (AuthenticationException e) {
                 lastException = e;
             }
         }
-        
         if (result != null) {
             if (eraseCredentialsAfterAuthentication
                     && (result instanceof CredentialsContainer)) {
@@ -187,7 +174,6 @@ public class ProviderManager implements AuthenticationManager, MessageSourceAwar
                 // from authentication
                 ((CredentialsContainer) result).eraseCredentials();
             }
-            
             // If the parent AuthenticationManager was attempted and successful than it will publish an AuthenticationSuccessEvent
             // This check prevents a duplicate AuthenticationSuccessEvent if the parent AuthenticationManager already published it
             if (parentResult == null) {
@@ -195,18 +181,14 @@ public class ProviderManager implements AuthenticationManager, MessageSourceAwar
             }
             return result;
         }
-        
         // Parent was null, or didn't authenticate (or throw an exception).
-        
         if (lastException == null) {
             lastException = new ProviderNotFoundException(messages.getMessage(
                 "ProviderManager.providerNotFound",
                 new Object[] { toTest.getName() },
                 "No AuthenticationProvider found for {0}"));
         }
-        
         prepareException(lastException, authentication);
-        
         throw lastException;
     }
 
@@ -280,5 +262,22 @@ public class ProviderManager implements AuthenticationManager, MessageSourceAwar
 }
 ```
 
+&emsp;&emsp;以上代码因个人有强迫症，所以对排版有所改动，但是代码还是那个代码。这个类呢有一个重要属性`private List<AuthenticationProvider> providers`，它是`AuthenticationProvider`的集合，下面来了解一个这个认证提供者的组成成分。
 
+```java
+package org.springframework.security.authentication;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+
+public interface AuthenticationProvider {
+    Authentication authenticate(Authentication authentication) throws AuthenticationException;
+    
+    boolean supports(Class<?> authentication);
+}
+```
+
+&emsp;&emsp;首先这是一个接口，这就意味着我们可以基于此自定义其实现类完成认证操作，该接口提供两个方法，一个是认证方法，要求其调用者需要提供待认证的信息且其实现者实现认证的具体逻辑，认证失败应当返回null或者抛出AuthenticationException，认证成功应当返回调用`isAuthenticated()`为true的认证对象。另一个方法是测试当前的这个认证支持者是否支持解析该类型的认证对象。显然，**这个接口的作用就是用来提供一个认证器**。
+
+&emsp;&emsp;上面了解了AuthenticationProvider，再结合authenticate方法看就很明了了，就是一个个的认证器去尝试认证，直到认证成功或者抛出异常为止。说的更细一点就是认证器依次尝试认证，首先判断当前认证器是否支持认证该Authentication。不支持就让下一个认证器尝试认证，支持就调用认证器的认证方法开始认证，具体的认证实现(AuthenticationProvider.authenticate())可以返回空，返回空的时候继续向后尝试使用其他的认证器进行认证，如果所有的认证器都返回的空，那么就是使用父级的认证管理器尝试认证，这是最后的手段，如果再次失败，就会抛出`ProviderNotFoundException`。如果有认证器认证返回结果不为空，那么就可以认为认证成功了，不再尝试其他的认证器。如果认证过程中抛出了`InternalAuthenticationServiceException`或者`AccountStatusException`就会将此异常直接抛出，如果是别的AuthenticationException，那么就会先记录下来，然后让别的认证器尝试认证，如果最后认证器都认证失败了并且父级的认证管理器也认证失败了，那么就会抛出最后记录的那个认证异常。如果认证成功了，会判断是否是父级认证管理器完成的认证，如果是，那么这个认证管理器可能已经发布过认证成功的事件了，这里就不发布了，如果是认证器列表中的某个认证器完成的认证，那么先发布一下认证成功事件，再返回一个崭新的认证信息。
 
