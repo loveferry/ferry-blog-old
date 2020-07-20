@@ -8,9 +8,11 @@ tags:
 categories: Spring Security
 ---
 
-&emsp;&emsp;继上一篇 [Spring Security（一） 体系结构之认证](Spring-Security-Architecture-Authentication.html) 后，这里研究一下Spring Security一个重要配置--认证配置。`AuthenticationConfiguration`是Spring提供的认证配置的配置类，该配置类的主要作用是用于生成一个全局的`AuthenticationManagerBuilder`注入到Spring容器中。使用者注入该配置类然后获取AuthenticationManagerBuilder再生成`AuthenticationManager`。看一下AuthenticationManagerBuilder bean的生成。
+&emsp;&emsp;继上一篇 [Spring Security（一） 体系结构之认证](Spring-Security-Architecture-Authentication.html) 后，这里研究一下Spring Security一个重要配置--认证配置。`AuthenticationConfiguration`是Spring提供的认证配置的配置类，该配置类的主要作用是用于生成一个全局的`AuthenticationManagerBuilder`注入到Spring容器中。使用者注入该配置类然后获取AuthenticationManagerBuilder再生成`AuthenticationManager`。
 
 <!-- more -->
+
+&emsp;&emsp;AuthenticationConfiguration中最核心的方法就是`getAuthenticationManager()`，其他的方法都是为这个方法服务的，该方法主要目的就是生成一个全局的认证管理器，但在讲解这个方法之前，需要先介绍一下在这个方法中用到的几个类。
 
 # AuthenticationManagerBuilder
 
@@ -138,3 +140,43 @@ static final class AuthenticationManagerDelegator implements AuthenticationManag
 ```
 
 &emsp;&emsp;通过源码可以看到，在调用认证方法时，判断委托对象delegate是否为空，如果为空那么就构造一个认证管理器赋值给委托对象并且使用委托对象完成认证。
+
+# GlobalAuthenticationConfigurerAdapter
+
+&emsp;&emsp;这个一个安全配置抽象类，里面对实现的接口`SecurityConfigurer`中的方法进行了空实现。在安全配置类AuthenticationConfiguration中，有多个它的子类被注入到Spring上下文中，随后被应用在了上下文中的AuthenticationManagerBuilder中。接下来我们抽取AuthenticationConfiguration中的部分代码展示。
+
+```java
+private List<GlobalAuthenticationConfigurerAdapter> globalAuthConfigurers = Collections.emptyList();
+
+@Bean
+public static GlobalAuthenticationConfigurerAdapter enableGlobalAuthenticationAutowiredConfigurer(
+        ApplicationContext context) {
+    return new EnableGlobalAuthenticationAutowiredConfigurer(context);
+}
+
+@Bean
+public static InitializeUserDetailsBeanManagerConfigurer initializeUserDetailsBeanManagerConfigurer(ApplicationContext context) {
+    return new InitializeUserDetailsBeanManagerConfigurer(context);
+}
+
+@Bean
+public static InitializeAuthenticationProviderBeanManagerConfigurer initializeAuthenticationProviderBeanManagerConfigurer(ApplicationContext context) {
+    return new InitializeAuthenticationProviderBeanManagerConfigurer(context);
+}
+
+@Autowired(required = false)
+public void setGlobalAuthenticationConfigurers(List<GlobalAuthenticationConfigurerAdapter> configurers) throws Exception {
+    Collections.sort(configurers, AnnotationAwareOrderComparator.INSTANCE);
+    this.globalAuthConfigurers = configurers;
+}
+```
+
+&emsp;&emsp;这里面涉及三个子类：
+
+> `EnableGlobalAuthenticationAutowiredConfigurer`：看源码就是在init方法中获取使用了`EnableGlobalAuthentication`注解的bean，然后通过debug日志打印，再就没有其他操作了。
+
+> `InitializeUserDetailsBeanManagerConfigurer`：初始化一个认证数据服务配置对象应用到全局的 AuthenticationManagerBuilder 中，其主要作用就是初始化一个认证实现添加到Spring上下文的 AuthenticationManagerBuilder bean中，其类型为`DaoAuthenticationProvider`，获取Spring上下文中的`UserDetailsService`，`PasswordEncoder`和`UserDetailsPasswordService`，将其放入认证对象中。默认的表单登陆认证就是在这里配置的。这里加载的`UserDetailsService`bean是在`UserDetailsServiceAutoConfiguration`配置类中初始化的，初始化了一个基于内存的数据服务对象，Spring Security的默认的UUID密码就是在这里设置进去的，是从`SecurityProperties.User`类中获取。
+
+> `InitializeAuthenticationProviderBeanManagerConfigurer`：初始化一个认证管理配置对象，从Spring上下文中获取 AuthenticationProvider 并加载到 AuthenticationManagerBuilder 中。
+
+&emsp;&emsp;说到这里，认证的全局配置基本说完了，这里总结一下，在`AuthenticationConfiguration`中，初始化了三个认证配置对象加载到Spring上下文中并且注入到自身对象中，其次初始化了`AuthenticationManagerBuilder`并且将之前的三个配置类应用到此对象中，然后将对象加载到Spring上下文中，这是一个全局的构造器，用来生成一个全局的认证配置器。此外，该类还提供了一个获取全局认证器的方法。
