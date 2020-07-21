@@ -174,9 +174,7 @@ public void setGlobalAuthenticationConfigurers(List<GlobalAuthenticationConfigur
 &emsp;&emsp;这里面涉及三个子类：
 
 > `EnableGlobalAuthenticationAutowiredConfigurer`：看源码就是在init方法中获取使用了`EnableGlobalAuthentication`注解的bean，然后通过debug日志打印，再就没有其他操作了。
-
 > `InitializeUserDetailsBeanManagerConfigurer`：初始化一个认证数据服务配置对象应用到全局的 AuthenticationManagerBuilder 中，其主要作用就是初始化一个认证实现添加到Spring上下文的 AuthenticationManagerBuilder bean中，其类型为`DaoAuthenticationProvider`，获取Spring上下文中的`UserDetailsService`，`PasswordEncoder`和`UserDetailsPasswordService`，将其放入认证对象中。默认的表单登陆认证就是在这里配置的。这里加载的`UserDetailsService`bean是在`UserDetailsServiceAutoConfiguration`配置类中初始化的，初始化了一个基于内存的数据服务对象，Spring Security的默认的UUID密码就是在这里设置进去的，是从`SecurityProperties.User`类中获取。
-
 > `InitializeAuthenticationProviderBeanManagerConfigurer`：初始化一个认证管理配置对象，从Spring上下文中获取 AuthenticationProvider 并加载到 AuthenticationManagerBuilder 中。
 
 &emsp;&emsp;说到这里，认证的全局配置基本说完了，这里总结一下，在`AuthenticationConfiguration`中，初始化了三个认证配置对象加载到Spring上下文中并且注入到自身对象中，其次初始化了`AuthenticationManagerBuilder`并且将之前的三个配置类应用到此对象中，然后将对象加载到Spring上下文中，这是一个全局的构造器，用来生成一个全局的认证配置器。此外，该类还提供了一个获取全局认证器的方法。
