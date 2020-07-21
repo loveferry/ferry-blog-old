@@ -30,8 +30,8 @@ public interface UserDetailsService {
 
 ![组织结构图](/Spring-Security-User-Details/UserDetailsService.png)
 
-> `UserDetailsManager`：对用户信息接口进行扩展，使之可以对用户信息进行更新；
+-  `UserDetailsManager`：对用户信息接口进行扩展，使之可以对用户信息进行更新；
+-  `JdbcDaoImpl`：封装了默认的查询语句，用于从指定的表获取用户信息；
+-  `CachingUserDetailsService`：用户数据缓存实现，将加载的数据缓存起来，在使用时先从缓存中获取，若为空再从委托的UserDetailsService接口加载用户并缓存。其中的缓存接口`UserCache`既可以使用其实现类`EhCacheBasedUserCache`也可以使用`SpringCacheBasedUserCache`传入一个`Cache`从而使用Spring的缓存。
+-  `UserDetailsServiceDelegator`：是一个内部类，他的作用是获取全局或者局部的`AuthenticationManagerBuilder`的默认UserDetailsService对象，从而委托给其完成加载数据的操作。
 
-> `JdbcDaoImpl`：封装了默认的查询语句，用于从指定的表获取用户信息；
-
-> ``：
