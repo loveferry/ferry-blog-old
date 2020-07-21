@@ -35,3 +35,4 @@ public interface UserDetailsService {
 -  `CachingUserDetailsService`：用户数据缓存实现，将加载的数据缓存起来，在使用时先从缓存中获取，若为空再从委托的UserDetailsService接口加载用户并缓存。其中的缓存接口`UserCache`既可以使用其实现类`EhCacheBasedUserCache`也可以使用`SpringCacheBasedUserCache`传入一个`Cache`从而使用Spring的缓存。
 -  `UserDetailsServiceDelegator`：是一个内部类，他的作用是获取全局或者局部的`AuthenticationManagerBuilder`的默认UserDetailsService对象，从而委托给其完成加载数据的操作。
 
+&emsp;&emsp;总结一下，UserDetailsService接口是用来获取系统的用户信息认证客户端提供的认证信息，在实际项目使用中，更多的是选择将用户信息持久化到数据库中，但是我们用户信息的表结构未必像JdbcUserDetailsManager中的表结构那样标准，所以我们可以实现UserDetailsManager自定义用户数据更新。此外，如果用户基数过大，查询用户信息的逻辑复杂，那么避免服务器负荷过高，可以将加载的用户信息缓存起来，我们可以借鉴CachingUserDetailsService，将实际工作委托给UserDetailsService，在加载用户信息前后添加判断逻辑，若缓存中存在则返回缓存中的用户信息，若不存在则加载并缓存，缓存的实现也是可以定制化开发的，自定义缓存类实现UserCache接口既可。
