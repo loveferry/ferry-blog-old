@@ -408,49 +408,30 @@ startup
 
 #### docker中安装oracle
 
-&emsp;&emsp;docker的安装这里我就不再赘述了,自行百度,使用docker安装oracle数据库其实还是很简单的,基本上就是一个命令的事情,在这里主要是记录一下我踩过的坑.
-
-&emsp;&emsp;这里先简单说一下docker.简单的说,docker就像是一个容器管理器,你可以自己下载你想要的容器,然后将容器在docker中运行,docker中的每一个容器都有自己的运行环境,不会相互干扰.接下来还会陆陆续续将一些docker的命令.
-
-&emsp;&emsp;网上有的教程是什么自己下载oracle的压缩文件,然后进行一系列操作,主要是为了数据能够存储宿主机.但是就我这几天的摸索看来,完全没有必要啊,docker是可以将进行容器和宿主机交互的,使用`docker cp`指令进行文件复制就好了啊,具体用法自行百度.可能有人担心docker中运行的服务在机器重启后数据会不会丢失或者损坏,这个是不会的,只要你操作正常,比如你在mac上安装了docker,docker上运行着oracle容器,你下班正常关机,第二天重启,然后重启docker容器就好了,数据并不会丢失的.当然,前提是你没有删除容器.
-
 ##### 查找并拉取镜像
 
-- 镜像: docker中镜像的概念可以理解为软件包.
+&emsp;&emsp;我们去 [hub.docker.com](hub.docker.com) 上搜索 [oracle](https://hub.docker.com/_/oracle-database-enterprise-edition) ，选择类型为database，如下图，这个镜像是oracle官方提供的，我们就选择这个好了。
 
-- 查找镜像 : 两种方式
+![查找](/oracle/oracle-docker-hub.png)
 
-&emsp;&emsp;第一种是通过官网网站 [hub.docker.com](hub.docker.com) 来查找镜像.
+&emsp;&emsp;不要说话，照着做就完事了，官方镜像，逼格高点，需填写一些东西。要先登录docker hub，没账号的自己建一个。
 
-![查找](/oracle/docker-search-1.png)
+![查找](/oracle/oracle-show-proceed.png)
 
-&emsp;&emsp;可以通过左上角的搜索框搜索你想要的镜像,蓝色的就是镜像的名称了,你可以点击`details`进去查看该镜像的详细信息.
+![查找](/oracle/oracle-docker-info.png)
 
-&emsp;&emsp;第二种方式: 通过终端搜索镜像
+&emsp;&emsp;复制去下载镜像，terminal中可能还需要docker login一下，得用你docker hub中login的账号。镜像下载速度看几个方面，一个就是你docker的源用的哪里的，一个就是你的网速，网的稳定性。
 
-```bash
-docker search oracle12c
-```
+&emsp;&emsp;左边的是官网友情提供的一些说明，比如连接的一些基本参数，如何指定一个外部配置文件，怎么连接这个容器。一个很重要的信息是sys管理员的密码是`Oradoc_db1`
 
-![运行结果](/oracle/docker-search-2.png)
-
-
-&emsp;&emsp;**这里很重要**这里我还是推荐使用第一种方法,可以进入官网查看镜像的详细信息,包括镜像版本之类的,也有这个镜像具体的操作步骤,如果镜像对应的服务有用户名密码什么的,在详细信息里面应该都有讲到.想我当初傻乎乎的蒙着头拉取镜像,结果版本几次都不对,要知道oracle还是蛮大的!!!哭...
-
-- 拉取镜像
-
-```bash
-docker pull container-registry.oracle.com/database/enterprise
-```
-
-&emsp;&emsp;这里pull后面的就是我们刚才查找得到的镜像名称,然后默默地等它下载完成... 这里有一个问题,如果你pull失败,仔细看一下错误信息,可能是你没有登录docker导致你没有办法拉取仓库中的镜像.这里不得不提一句,docekr中的提示还是很棒的,我在踩坑这段时间还是帮了我不少忙.回归正传,登录docker直接执行`docker login`然后按照提示输入用户名密码就好了,如果你还没注册[hub.docker.com](hub.docker.com)
+![查找](/oracle/oracle-docker-show-detail.png)
 
 ##### 运行镜像
 
 - 查看我们刚才拉取的镜像
 
 ```bash
-docker image ls
+docker images
 ```
 
 ![运行结果](/oracle/docker-image.png)
@@ -458,7 +439,7 @@ docker image ls
 - 运行
 
 ```bash
-docker run -d --name oracle12c -p 1521:1521 -p 8081:8080 container-registry.oracle.com/database/enterprise:12.2.0.1
+docker run -d -it --name oracle12.2.0.1 -p 1521:1521 12a359cd0528
 ```
 
 > 参数解释
@@ -469,25 +450,25 @@ docker run -d --name oracle12c -p 1521:1521 -p 8081:8080 container-registry.orac
 > -v:可以将容器的指定目录映射到宿主机的指定目录,这个操作很骚气,很多人喜欢,但是我觉得没有必要啊,防止误删容器数据丢失??你别瞎几把删除容器不就好了...
 > -it:-i以交互模式运行容器,-t为容器重新分配一个伪输入终端.这两个指令通常是搭配在一起使用.使用这个命令就是在生成容器之后模拟出来一个终端让你可以对这个容器进行操作,当然,像oracle,使用-it一般也需要在后面加上启动参数,选择以什么用户进入容器
 
-- 进入容器
+&emsp;&emsp;如下图所示，容器启动需要时间,等到状态变成healthy时就启动好了。
 
-&emsp;&emsp;我一般不采用运行镜像的使用使用-it进入容器shell,而是等run命令执行完返回容器id之后先查看一下这个容器状态.然后进入容器操作.
+![运行结果](/oracle/docker-start-image.png)
 
-```bash
-docker container ls
-docker exec -it 70819e3636ca /bin/bash
-```
-
-![运行结果](/oracle/docker-container.png)
-
-&emsp;&emsp;在这里需要注意一点,我们可以从上面的截图看到端口映射的情况,它是将容器的1521端口映射到宿主机的0.0.0.0:51521上,所以我们需要看一下宿主机的ip映射情况.
+- 连接
 
 ```bash
-vi /etc/hosts
+docker exec -it oracle12.2.0.1 bash -c "source /home/oracle/.bashrc; sqlplus /nolog"
 ```
-![运行结果](/oracle/hosts.png)
 
-&emsp;&emsp;可以看到hosts文件是我的机器的ip映射关系.这里我们需要在最后一行添加一行`0.0.0.0 127.0.0.1`,将0.0.0.0映射到127.0.0.1上,这样我们在后面使用宿主机的客户端设置连接ip地址时使用127.0.0.1才能连上oracle.
+![运行结果](/oracle/oracle-docker-conn.png)
+
+&emsp;&emsp;用户名`sys`，密码`Oradoc_db1`。
+
+```bash
+docker exec -it oracle12.2.0.1 bash
+```
+
+&emsp;&emsp;这是直接访问容器的目录，导入导出，查看日志等操作可能用到。
 
 ### 数据库操作
 
@@ -874,4 +855,30 @@ where ao.object_id = lo.object_id and lo.session_id = sess.sid;
 
 ```sql
 ALTER SYSTEM KILL SESSION 'SID,SERIR#';
+```
+
+#### PDB容器的操作
+
+- **查看PDB容器**
+
+```sql
+show pdbs
+```
+
+- **启动PDB容器**
+
+```sql
+alter pluggable database pdborcl1 open;
+```
+
+- **关闭PDB容器**
+
+```sql
+alter pluggable database pdborcl1 close;
+```
+
+- **切换会话**
+
+```sql
+alter session set container=odborcl1;
 ```
