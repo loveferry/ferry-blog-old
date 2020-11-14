@@ -759,7 +759,7 @@ WantedBy=multi-user.target
 chmod +x /lib/systemd/system/nginx.service
 ```
 
-- 刷行配置
+- 刷新配置
 
 ```bash
 systemctl daemon-reload
@@ -775,4 +775,61 @@ systemctl start nginx.service
 
 ```bash
 systemctl status nginx.service
+```
+
+### docker安装
+
+#### windows/mac
+
+&emsp;&emsp;这两种的形式没什么好说的，从[官网](https://www.docker.com/get-started) 下载然后安装就完事了。
+
+#### centos
+
+&emsp;&emsp;使用yum安装docker，首先设置docker仓库，然后安装docker社区版的引擎。
+
+- 安装需要的软件
+
+```bash
+yum install -y yum-utils device-mapper-persistent-data lvm2
+```
+
+- 设置仓库源
+
+```bash
+yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
+```
+
+&emsp;&emsp;这里使用的是阿里云的源，速度比官方的快，给出其他参考的源：`官方：https://download.docker.com/linux/centos/docker-ce.repo` , `清华大学：https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/centos/docker-ce.repo` 。
+
+- 安装社区版引擎
+
+```bash
+yum install -y docker-ce docker-ce-cli containerd.io
+```
+
+![error](/software-install/docker-install-error.png)
+
+&emsp;&emsp;这一步如果如上图报错，说明`containerd.io`版本过低，我们手动下载安装高版本的就好了。
+
+```bash
+wget https://download.docker.com/linux/centos/7/x86_64/edge/Packages/containerd.io-1.3.7-3.1.el7.x86_64.rpm
+yum install -y containerd.io-1.3.7-3.1.el7.x86_64.rpm
+```
+
+&emsp;&emsp;安装好了之后继续上述的安装docker的操作。
+
+```bash
+yum install -y docker-ce docker-ce-cli containerd.io
+```
+
+&emsp;&emsp;启动docker服务
+
+```bash
+systemctl start docker
+```
+
+&emsp;&emsp;查看docker信息以验证安装是否成功
+
+```bash
+docker info
 ```
