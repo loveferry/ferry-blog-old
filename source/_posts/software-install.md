@@ -779,18 +779,26 @@ systemctl status nginx.service
 
 ### docker安装
 
+&emsp;&emsp;这里提供传送门[docker官网的安装说明](https://docs.docker.com/engine/install/#server),可以查看对应的操作系统安装docker的详细步骤。
+
 #### windows/mac
 
 &emsp;&emsp;这两种的形式没什么好说的，从[官网](https://www.docker.com/get-started) 下载然后安装就完事了。
 
 #### centos
 
-&emsp;&emsp;使用yum安装docker，首先设置docker仓库，然后安装docker社区版的引擎。
+&emsp;&emsp;通过设置仓库的方式安装docker，那么需要设置仓库源，设置仓库源需要用到`yum-config-manager`，而它来自`yum-utils`。
 
-- 安装需要的软件
+- 移除旧的安装包
 
 ```bash
-yum install -y yum-utils device-mapper-persistent-data lvm2
+yum remove docker docker-client docker-client-latest docker-common docker-latest docker-latest-logrotate docker-logrotate docker-engine
+```
+
+- 安装工具
+
+```bash
+yum install -y yum-utils
 ```
 
 - 设置仓库源
@@ -807,6 +815,16 @@ yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/d
 yum install -y docker-ce docker-ce-cli containerd.io
 ```
 
+- 安装指定版本引擎
+
+```bash
+yum list docker-ce --showduplicates | sort -r
+```
+
+```bash
+yum install -y docker-ce-19.03.13 docker-ce-cli-19.03.13 containerd.io
+```
+
 ![error](/software-install/docker-install-error.png)
 
 &emsp;&emsp;这一步如果如上图报错，说明`containerd.io`版本过低，我们手动下载安装高版本的就好了。
@@ -821,6 +839,8 @@ yum install -y containerd.io-1.3.7-3.1.el7.x86_64.rpm
 ```bash
 yum install -y docker-ce docker-ce-cli containerd.io
 ```
+
+&emsp;&emsp;到这里我们docker就安装好了，但是还没有启动，同事docker group也创建了，但是没有用户添加到这个用户组，这个我们后续可以按需设置。
 
 &emsp;&emsp;启动docker服务
 

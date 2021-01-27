@@ -79,9 +79,12 @@ theme: next
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
-  type: git
-  repo: ferry:/u01/ferry/blog.git
-  branch: master
+  - type: git
+    repo: ferry:/u01/ferry/blog.git
+    branch: master
+  - type: git
+    repo: https://github.com/loveferry/loveferry.github.io
+    branch: master
 
 # hexo-tag-cloud
 tag_cloud:
