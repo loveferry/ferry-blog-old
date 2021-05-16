@@ -1,5 +1,5 @@
 ---
-title: kubernetes
+title: kubernetes集群部署
 date: 2020-11-29 19:55:58
 categories: kubernetes
 tags:
@@ -12,8 +12,8 @@ tags:
 
 &emsp;&emsp;一个 `Kubernetes` 集群包含两种类型的资源:
             
-- Master 调度整个集群
-- Nodes 负责运行应用
+- Master 控制平面，调度整个集群
+- Nodes 工作节点，负责运行应用
 
 &emsp;&emsp;Master 负责管理整个集群。 Master 协调集群中的所有活动，例如调度应用、维护应用的所需状态、应用扩容以及推出新的更新。Node 是一个虚拟机或者物理机，它在 `Kubernetes` 集群中充当工作机器的角色 每个Node都有 `Kubelet` , 它管理 Node 而且是 Node 与 Master 通信的代理。 Node 还应该具有用于​​处理容器操作的工具，例如 `Docker` 或 `rkt` 。处理生产级流量的 `Kubernetes` 集群至少应具有三个 Node 。
 
@@ -21,7 +21,16 @@ tags:
 
 &emsp;&emsp;`Kubernetes` 既可以部署在物理机上也可以部署在虚拟机上。您可以使用 `Minikube` 开始部署 `Kubernetes` 集群。 `Minikube` 是一种轻量级的 `Kubernetes` 实现，可在本地计算机上创建 VM 并部署仅包含一个节点的简单集群。 `Minikube` 可用于 `Linux` ， `macOS` 和 `Windows` 系统。`Minikube CLI` 提供了用于引导集群工作的多种操作，包括启动、停止、查看状态和删除。
 
-### 安装
+&emsp;&emsp;`kubernetes` 集群搭建有两种方式：
+
+- 使用部署工具快速搭建 `kubernetes` 集群，例如 `minikube`（快速搭建一个运行在本地的单节点的 `kubernetes`，一般用于本地学习），`kubeadm` 等
+- 从官网下载二进制文件手动部署
+
+&emsp;&emsp;这里记录两种方式安装 `kubernetes` 集群，一种是使用 `kubeadm` 自动部署集群，一种是下载二进制文件手动部署。
+
+### 集群机器检查
+
+&emsp;&emsp;集群内所有节点均需检查是否符合要求。
 
 &emsp;&emsp;安装要求：
 
@@ -32,19 +41,32 @@ tags:
 > 节点之中不可以有重复的主机名、MAC 地址或 product_uuid
 > 禁用交换分区。为了保证 kubelet 正常工作，你 必须 禁用交换分区
 
-&emsp;&emsp;`kubernetes` 集群搭建有两种方式：
-
-- 使用部署工具快速搭建 `kubernetes` 集群，例如 `minikube`（快速搭建一个运行在本地的单节点的 `kubernetes`，一般用于本地学习），`kubeadm` 等
-- 从官网下载二进制文件手动部署
-
-&emsp;&emsp;这里记录两种方式安装 `kubernetes` 集群，一种是使用 `kubeadm` 自动部署集群，一种是下载二进制文件手动部署。
-
-&emsp;&emsp;集群安装要求校验：
+&emsp;&emsp;集群安装要求查看并修改：
 
 - 查看逻辑内核数：
 
 ```bash
 cat /proc/cpuinfo| grep "processor"| wc -l
+```
+
+- 查看主机名，mac地址，product_uuid
+
+```bash
+hostname
+ip addr
+cat /sys/class/dmi/id/product_uuid
+```
+
+&emsp;&emsp;如果主机名重复，请修改
+
+```bash
+hostnamectl set-hostname k8s_master
+```
+
+- 永久禁用交换分区(/etc/fstab)
+
+```bash
+# /dev/mapper/centos-swap swap                    swap    defaults        0 0
 ```
 
 - 查看内存大小
@@ -65,30 +87,10 @@ cat /proc/version
 ping 172.16.98.2
 ```
 
-- 查看主机名，mac地址，product_uuid
-
-```bash
-hostname
-ip addr
-cat /sys/class/dmi/id/product_uuid
-```
-
-&emsp;&emsp;如果主机名重复，请修改
-
-```bash
-hostnamectl set-hostname k8s_master
-```
-
 - 设置主机映射(/etc/hosts)
 
 ```bash
 172.16.98.2 k8s-master
-```
-
-- 永久禁用交换分区(/etc/fstab)
-
-```bash
-# /dev/mapper/centos-swap swap                    swap    defaults        0 0
 ```
 
 - 端口设置
@@ -111,11 +113,13 @@ firewall-cmd --zone=public --add-port=10252/tcp --permanent
 firewall-cmd --reload
 ```
 
-#### 使用kubeadm引导集群
+### 使用kubeadm引导集群
 
-##### 安装runtime
+#### 安装容器
 
-&emsp;&emsp;runtime是一个负责运行容器的软件，需要在集群的每个机器上安装。在linux上结合 `Kubernetes` 使用的几种通用容器为：`containerd`、`CRI-O`、`Docker`。这里我们选择`Docker`。
+&emsp;&emsp;这一步需要在集群所有节点执行。
+
+&emsp;&emsp;在linux上结合 `Kubernetes` 使用的几种通用容器为：`containerd`、`CRI-O`、`Docker`。这里我们选择`Docker`。
 
 &emsp;&emsp;这里提供传送门[docker官网的安装说明](https://docs.docker.com/engine/install/#server),可以查看对应的操作系统安装 `Docker` 的详细步骤。下面的安装是基于centos7安装 `Docker` 的
 
@@ -125,14 +129,12 @@ firewall-cmd --reload
 yum remove docker docker-client docker-client-latest docker-common docker-latest docker-latest-logrotate docker-logrotate docker-engine
 yum install -y yum-utils
 yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
-yum install docker-ce docker-ce-cli containerd.io
+yum install -y docker-ce docker-ce-cli containerd.io
 systemctl start docker
 systemctl enable docker
 ```
 
-##### 安装 kubeadm、kubelet 和 kubectl
-
-&emsp;&emsp;在集群的每个机器上安装下面的软件包：
+#### 安装工具
 
 - `kubeadm`：用来初始化集群的指令。
 - `kubelet`：在集群中的每个节点上用来启动 Pod 和容器等。
@@ -140,7 +142,7 @@ systemctl enable docker
 
 &emsp;&emsp;在实际安装之前我们还需要了解一下 `Kubernetes` 版本与版本间的偏差策略
 
-###### 版本差异
+##### 版本差异
 
 &emsp;&emsp;`Kubernetes` 版本号格式为 x.y.z，其中 x 为大版本号，y 为小版本号，z 为补丁版本号。
 
@@ -165,7 +167,9 @@ systemctl enable docker
 &emsp;&emsp;`kube-proxy` 必须与节点上的 `kubelet` 的小版本相同;`kube-proxy` 一定不能比 `kube-apiserver` 小版本高;`kube-proxy` 最多只能比 `kube-apiserver` 低两个小版本
 
 
-###### 安装
+##### 安装
+
+&emsp;&emsp;需要在集群所有机器完成这一步。
 
 - k8s的yum源配置(创建文件`/etc/yum.repos.d/kubernetes.repo`)
 
@@ -197,9 +201,11 @@ yum install -y kubelet-1.20.2-0 kubeadm-1.20.2-0 kubectl-1.20.2-0
 systemctl enable kubelet
 ```
 
-##### 使用 kubeadm 创建集群
+#### 初始化集群
 
-&emsp;&emsp;这一步将完成单个控制平面的安装。在初始化控制平面之前，我们需要验证一下与 gcr.io 容器镜像仓库的连通性。
+&emsp;&emsp;这一步只需要在控制平面执行即可。
+
+&emsp;&emsp;在初始化控制平面之前，我们需要验证一下与 gcr.io 容器镜像仓库的连通性。
 
 ```bash
 kubeadm config images pull
@@ -285,10 +291,10 @@ docker image rm registry.cn-shanghai.aliyuncs.com/ferry/etcd:3.4.13-0
 docker image rm registry.cn-shanghai.aliyuncs.com/ferry/coredns:1.7.0
 ```
 
-- 初始化集群，`--pod-network-cidr` 参数用于配置CIDR，参数值可以填写 "内网ip/16"。具体含义自行百度吧。
+- 初始化集群，`--pod-network-cidr` 参数用于配置CIDR，参数值可以填写 "内网ip/16"。
 
 ```bash
-kubeadm init --pod-network-cidr=172.16.98.2/16
+kubeadm init --pod-network-cidr=172.10.0.0/16 --service-cidr=10.96.0.0/12
 ```
 
 &emsp;&emsp;错误诊断：
@@ -302,7 +308,7 @@ firewall-cmd --zone=public --list-ports
 - 有警告kube和docker使用的 `cgroup` 不一致，此时我们使用 `docker info` 命令，在输出信息中查找 `Cgroup Driver: cgroupfs` 这一行，`kubelet` 的该参数查询我没有找到，所以这里提供修改docker的方法。
 
 ```bash
-echo { "exec-opts": ["native.cgroupdriver=systemd"] } > /etc/docker/daemon.json
+echo '{ "exec-opts": ["native.cgroupdriver=systemd"] }' > /etc/docker/daemon.json
 systemctl daemon-reload
 systemctl restart docker
 ```
@@ -318,7 +324,7 @@ net.bridge.bridge-nf-call-iptables = 1
 &emsp;&emsp;解决了所有错误后我们再次初始化集群，当shell中输出如下日志时说明集群已经初始化成功了。
 
 ```bash
-kubeadm init
+kubeadm init --pod-network-cidr=172.10.0.0/16 --service-cidr=10.96.0.0/12
 ```
 
 ```bash
@@ -405,10 +411,10 @@ export KUBECONFIG=/etc/kubernetes/admin.conf
 ```
 
 ```bash
-source ~/.base_profile
+source ~/.bash_profile
 ```
 
-##### CNI(容器网络接口)
+#### CNI(容器网络接口)
 
 ```bash
 kubectl get pods --all-namespaces
@@ -490,4 +496,81 @@ kubectl delete pod kube-router-bxl96 -n kube-system
 
 ```bash
 kubectl delete ds kube-proxy -n kube-system
+```
+
+&emsp;&emsp;至此，我们工作平面已经初步安装完成，现在需要加入工作节点壮大我们的集群。
+
+&emsp;&emsp;使用weave插件
+
+```bash
+kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+```
+
+#### 加入工作节点
+
+&emsp;&emsp;这一步需要控制平面和工作节点配合完成。
+
+> 控制平面：用于管理集群的机器
+> 工作节点：运行应用服务的机器
+
+&emsp;&emsp;将工作节点加入集群需要令牌认证，令牌默认24小时失效。我们先查询当前未失效的令牌
+
+- 控制平面
+
+```bash
+kubeadm token list
+```
+
+&emsp;&emsp;如果shell中输出了令牌信息，那么我们就用这个令牌就可以让工作节点加入集群，若没有输出令牌信息，说明已有的令牌都失效了，需要重新生成令牌。
+
+- 控制平面
+
+```bash
+kubeadm token create
+```
+
+&emsp;&emsp;此外，我们还需要获取ca证书sha256编码hash值
+
+- 控制平面
+
+```bash
+openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'
+```
+
+&emsp;&emsp;将工作节点加入集群，命令中的ip地址是控制平面的内网ip，端口是 Kubernetes API 服务器的端口
+
+- 工作节点
+
+```bash
+kubeadm join 172.16.98.2:6443 --token udl1vd.ln1kzbtertnzbfmi --discovery-token-ca-cert-hash sha256:9393b7ecc8c6f81d81eb362e4b74e2635eedda15e749872a74cb6ac77bc8c1e5
+```
+
+![加入节点错误](k8s_join_node_to_master.png)
+
+&emsp;&emsp;出错了，说明我们工作节点的环境准备不是很充分，此时我们按照提示一步步解决。
+
+- 未识别的的主机名,编辑工作节点的 `/etc/hosts` 文件
+
+```bash
+172.16.98.6 k8s-node-1
+```
+
+- 编辑工作节点文件`/etc/sysctl.conf`，添加设置然后重启系统
+
+```bash
+net.bridge.bridge-nf-call-iptables = 1
+```
+
+- 工作节点
+
+```bash
+kubeadm join 172.16.98.2:6443 --token udl1vd.ln1kzbtertnzbfmi --discovery-token-ca-cert-hash sha256:9393b7ecc8c6f81d81eb362e4b74e2635eedda15e749872a74cb6ac77bc8c1e5
+```
+
+&emsp;&emsp;依次将所有工作节点加入集群中，接下来在查看集群中的节点信息。
+
+- 控制平面
+
+```bash
+kubectl get node
 ```
