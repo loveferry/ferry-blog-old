@@ -149,11 +149,13 @@ firewall-cmd --reload
 
 - docker安装
 
+&emsp;&emsp;我们可以先去[kubernetes的github仓库依赖关系](https://github.com/kubernetes/kubernetes/blob/v1.21.1/build/dependencies.yaml)中看到我们想要安装的k8s集群版本对应的docker版本。
+
 ```bash
 yum remove docker docker-client docker-client-latest docker-common docker-latest docker-latest-logrotate docker-logrotate docker-engine
 yum install -y yum-utils
 yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
-yum install -y docker-ce docker-ce-cli containerd.io
+yum install -y docker-ce-20.10 docker-ce-cli-20.10 containerd.io
 systemctl start docker
 ```
 
