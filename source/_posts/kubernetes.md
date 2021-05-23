@@ -155,7 +155,7 @@ firewall-cmd --reload
 yum remove docker docker-client docker-client-latest docker-common docker-latest docker-latest-logrotate docker-logrotate docker-engine
 yum install -y yum-utils
 yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
-yum install -y docker-ce-20.10 docker-ce-cli-20.10 containerd.io
+yum install -y docker-ce-20.10.6 docker-ce-cli-20.10.6 containerd.io
 systemctl start docker
 ```
 
@@ -236,7 +236,7 @@ yum list kubeadm kubectl kubelet
 - 安装指定版本
 
 ```bash
-yum install -y kubelet-1.20.2-0 kubeadm-1.20.2-0 kubectl-1.20.2-0
+yum install -y kubelet-1.21.1-0 kubeadm-1.21.1-0 kubectl-1.21.1-0
 ```
 
 - 设置服务开机自启（这里不设置在初始化集群的时候会报错）
@@ -267,11 +267,11 @@ kubeadm config images list
 
 &emsp;&emsp;代码仓操作：
 
-- 登录代码仓创建仓库，将执行 `kubeadm config images list` 查看到的镜像依次创建了仓库。我这里选择的是github，如果无法访问github也可以选择你能访问的任何私仓，只要这个私仓公网可以访问即可。
+&emsp;&emsp;这里我使用github创建一个仓库专门用来创建dockerfile。
 
 ![创建仓库](/kubernetes/k8s_create_github_repository.png)
 
-- 在仓库中创建 `Dockerfile` 文件,以 `kube-proxy` 为例，仓库名为 `kube-proxy`，`Dockerfile`内容为`FROM k8s.gcr.io/kube-proxy:v1.20.2`。
+- 在仓库中创建各个组件的dockerfile文件。
 
 ![创建dockerfile](/kubernetes/k8s_create_github_dockerfile.png)
 
@@ -282,8 +282,6 @@ kubeadm config images list
 ![创建dockerfile](/kubernetes/k8s_create_aliyun_docker_repository2.png)
 
 - 创建规则执行构建,若失败则查看日志，大概率是构建规则选的分支，文件，路径与代码仓中的不匹配
-
-![查看镜像仓库](/kubernetes/k8s_click_aliyun_docker_repository.png)
 
 ![查看构建](/kubernetes/k8s_click_aliyun_create_rule.png)
 
@@ -302,37 +300,37 @@ docker login --username=ferry_sy registry.cn-shanghai.aliyuncs.com
 ```
 
 ```bash
-docker pull registry.cn-shanghai.aliyuncs.com/ferry/kube-apiserver:v1.20.2
-docker pull registry.cn-shanghai.aliyuncs.com/ferry/kube-controller-manager:v1.20.2
-docker pull registry.cn-shanghai.aliyuncs.com/ferry/kube-scheduler:v1.20.2
-docker pull registry.cn-shanghai.aliyuncs.com/ferry/kube-proxy:v1.20.2
-docker pull registry.cn-shanghai.aliyuncs.com/ferry/pause:3.2
-docker pull registry.cn-shanghai.aliyuncs.com/ferry/etcd:3.4.13-0
-docker pull registry.cn-shanghai.aliyuncs.com/ferry/coredns:1.7.0
+docker pull registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:kube-controller-manager_v1.21.1
+docker pull registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:kube-apiserver_v1.21.1
+docker pull registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:coredns_v1.8.0
+docker pull registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:kube-proxy_v1.21.1
+docker pull registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:pause_3.4.1
+docker pull registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:kube-scheduler_v1.21.1
+docker pull registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:etcd_3.4.13-0
 ```
 
 - 镜像重命名
 
 ```bash
-docker tag registry.cn-shanghai.aliyuncs.com/ferry/kube-apiserver:v1.20.2 k8s.gcr.io/kube-apiserver:v1.20.2
-docker tag registry.cn-shanghai.aliyuncs.com/ferry/kube-controller-manager:v1.20.2 k8s.gcr.io/kube-controller-manager:v1.20.2
-docker tag registry.cn-shanghai.aliyuncs.com/ferry/kube-scheduler:v1.20.2 k8s.gcr.io/kube-scheduler:v1.20.2
-docker tag registry.cn-shanghai.aliyuncs.com/ferry/kube-proxy:v1.20.2 k8s.gcr.io/kube-proxy:v1.20.2
-docker tag registry.cn-shanghai.aliyuncs.com/ferry/pause:3.2 k8s.gcr.io/pause:3.2
-docker tag registry.cn-shanghai.aliyuncs.com/ferry/etcd:3.4.13-0 k8s.gcr.io/etcd:3.4.13-0
-docker tag registry.cn-shanghai.aliyuncs.com/ferry/coredns:1.7.0 k8s.gcr.io/coredns:1.7.0
+docker tag registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:kube-apiserver_v1.21.1 k8s.gcr.io/kube-apiserver:v1.21.1
+docker tag registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:kube-controller-manager_v1.21.1 k8s.gcr.io/kube-controller-manager:v1.21.1
+docker tag registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:kube-scheduler_v1.21.1 k8s.gcr.io/kube-scheduler:v1.21.1
+docker tag registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:kube-proxy_v1.21.1 k8s.gcr.io/kube-proxy:v1.21.1
+docker tag registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:pause_3.4.1 k8s.gcr.io/pause:3.4.1
+docker tag registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:etcd_3.4.13-0 k8s.gcr.io/etcd:3.4.13-0
+docker tag registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:coredns_v1.8.0 k8s.gcr.io/coredns/coredns:v1.8.0
 ```
 
 - 删除阿里云镜像
 
 ```bash
-docker image rm registry.cn-shanghai.aliyuncs.com/ferry/kube-apiserver:v1.20.2
-docker image rm registry.cn-shanghai.aliyuncs.com/ferry/kube-controller-manager:v1.20.2
-docker image rm registry.cn-shanghai.aliyuncs.com/ferry/kube-scheduler:v1.20.2
-docker image rm registry.cn-shanghai.aliyuncs.com/ferry/kube-proxy:v1.20.2
-docker image rm registry.cn-shanghai.aliyuncs.com/ferry/pause:3.2
-docker image rm registry.cn-shanghai.aliyuncs.com/ferry/etcd:3.4.13-0
-docker image rm registry.cn-shanghai.aliyuncs.com/ferry/coredns:1.7.0
+docker image rm registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:kube-controller-manager_v1.21.1
+docker image rm registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:kube-apiserver_v1.21.1
+docker image rm registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:coredns_v1.8.0
+docker image rm registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:kube-proxy_v1.21.1
+docker image rm registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:pause_3.4.1
+docker image rm registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:kube-scheduler_v1.21.1
+docker image rm registry.cn-shanghai.aliyuncs.com/ferry/docker-repository:etcd_3.4.13-0
 ```
 
 - 初始化集群，`--pod-network-cidr` 参数用于配置CIDR，参数值可以填写 "内网ip/16"。
