@@ -93,6 +93,30 @@ ping 172.16.98.2
 172.16.98.2 k8s-master
 ```
 
+- 加载模块(`/etc/modules-load.d/containerd.conf`)
+
+```bash
+overlay
+br_netfilter
+```
+
+```bash
+modprobe overlay
+modprobe br_netfilter
+```
+
+- 设置sysctl参数(`/etc/sysctl.d/99-kubernetes-cri.conf`)
+
+```bash
+net.bridge.bridge-nf-call-iptables  = 1
+net.ipv4.ip_forward                 = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+```
+
+```bash
+sysctl --system
+```
+
 - 端口设置
 
 | 协议   | 方向  | 端口范围   | 作用                     | 使用者                          |
@@ -131,7 +155,25 @@ yum install -y yum-utils
 yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
 yum install -y docker-ce docker-ce-cli containerd.io
 systemctl start docker
+```
+
+- 配置(`/etc/docker/daemon.json`)
+
+```bash
+{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "storage-driver": "overlay2"
+}
+```
+
+```bash
 systemctl enable docker
+systemctl daemon-reload
+systemctl restart docker
 ```
 
 #### 安装工具
@@ -292,36 +334,6 @@ docker image rm registry.cn-shanghai.aliyuncs.com/ferry/coredns:1.7.0
 ```
 
 - 初始化集群，`--pod-network-cidr` 参数用于配置CIDR，参数值可以填写 "内网ip/16"。
-
-```bash
-kubeadm init --pod-network-cidr=172.10.0.0/16 --service-cidr=10.96.0.0/12
-```
-
-&emsp;&emsp;错误诊断：
-
-- 有警告firewall防火墙是开启状态，并提示需要开放必须的端口，此时我们检查它提示的端口是否已经开放即可。
-
-```bash
-firewall-cmd --zone=public --list-ports
-```
-
-- 有警告kube和docker使用的 `cgroup` 不一致，此时我们使用 `docker info` 命令，在输出信息中查找 `Cgroup Driver: cgroupfs` 这一行，`kubelet` 的该参数查询我没有找到，所以这里提供修改docker的方法。
-
-```bash
-echo '{ "exec-opts": ["native.cgroupdriver=systemd"] }' > /etc/docker/daemon.json
-systemctl daemon-reload
-systemctl restart docker
-```
-
-- 报错 `/proc/sys/net/bridge/bridge-nf-call-iptables contents are not set to 1`，这是因为未指定kubelet网络插件，则使用 noop 插件，该插件设置 `net/bridge/bridge-nf-call-iptables=1`，以确保简单的配置 （如带网桥的 `Docker` ）与 `iptables` 代理正常工作
-
-- 编辑文件`/etc/sysctl.conf`，添加设置然后重启系统
-
-```bash
-net.bridge.bridge-nf-call-iptables = 1
-```
-
-&emsp;&emsp;解决了所有错误后我们再次初始化集群，当shell中输出如下日志时说明集群已经初始化成功了。
 
 ```bash
 kubeadm init --pod-network-cidr=172.10.0.0/16 --service-cidr=10.96.0.0/12
@@ -512,7 +524,7 @@ kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl versio
 
 ##### flannel
 
-```bash
+```yaml
 ---
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
