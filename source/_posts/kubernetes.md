@@ -793,7 +793,7 @@ openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outfor
 kubeadm join 172.16.98.2:6443 --token udl1vd.ln1kzbtertnzbfmi --discovery-token-ca-cert-hash sha256:9393b7ecc8c6f81d81eb362e4b74e2635eedda15e749872a74cb6ac77bc8c1e5
 ```
 
-![加入节点错误](k8s_join_node_to_master.png)
+![加入节点错误](/kubernetes/k8s_join_node_to_master.png)
 
 &emsp;&emsp;出错了，说明我们工作节点的环境准备不是很充分，此时我们按照提示一步步解决。
 
@@ -830,7 +830,44 @@ kubectl get node
 &emsp;&emsp;`ipvs`相比较`iptables`来说性能更好，我们将`kube-proxy`的模式切换成`ipvs`。
 
 ```bash
-kubectl edit cm -n kube-system
+kubectl edit cm kube-proxy -n kube-system
 ```
 
 将`data.config.conf.mode`设置成`ipvs`保存退出即可。
+
+### 常见资源
+
+- 查看所有资源
+
+```bash
+kubectl api-resources
+```
+
+![查看所有资源列表](/kubernetes/k8s_api_resource.png)
+
+#### 命名空间
+
+&emsp;&emsp;Kubernetes 支持多个虚拟集群，它们底层依赖于同一个物理集群。这些虚拟集群被称为命名空间。k8s创建之初有三个命名空间。`default`空间是默认的命名空间，没有指定命名空间创建的资源会在此空间中；`kube-system`是k8s创建的命名空间，k8s集群管理的众多资源在此命名空间中；`kube-public`是公共的资源空间，我们约定（不是规定）共有的资源在此空间存放，以便所有用户共享。
+
+- 创建
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ferry
+```
+
+```bash
+kubectl apply -f ferry.yaml
+```
+
+![创建命名空间](/kubernetes/k8s_create_namesapces.png)
+
+&emsp;&emsp;后续所有在非`default`命名空间中的资源，访问都需要增加参数`-n namespaceName`指定命名空间。
+
+- 获取所有命名空间
+
+```bash
+kubectl get ns
+```
