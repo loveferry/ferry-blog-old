@@ -876,6 +876,22 @@ kubectl get ns
 
 &emsp;&emsp;`Secret`用来配置一些敏感数据，诸如密码，密钥等。`Secret`有三种类型，下面分别介绍。
 
+##### Opaque
+
+&emsp;&emsp;这种类型是普通的键值对存储，用来存放用户名密码等敏感信息的。**这种类型的值必须是base64加密过后的，否则创建的时候会报错。**
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ferry
+  namespace: ferry
+type: Opaque
+data:
+  mysql.username: ferry
+  mysql.password: love
+```
+
 ##### kubernetes.io/dockerconfigjson
 
 &emsp;&emsp;这种类型是用来存储docker的认证信息的，比如你的pod使用的镜像仓库的用户名密码信息。
@@ -887,6 +903,10 @@ kubectl create secret docker-registry aliyun-docker-registry --docker-server=reg
 ```
 
 &emsp;&emsp;`aliyun-docker-registry`这个就是自定义的secret名称，在引用这个secret的时候就需要使用它；`--docker-server`指定镜像仓库地址；`--docker-username`指定镜像仓库登录名称；`--docker-password`指定镜像仓库登录密码；`--docker-email`指定邮箱，这个参数是可选的；`-n ferry`指定在哪个命名空间创建，没有就默认创建在`default`空间下面。
+
+##### kubernetes.io/service-account-token
+
+&emsp;&emsp;Service Account用来访问Kubernetes API，由Kubernetes自动创建，并且会自动挂载到Pod的/run/secrets/kubernetes.io/serviceaccount目录中。
 
 #### Deployment
 
