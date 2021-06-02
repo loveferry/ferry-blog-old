@@ -823,7 +823,7 @@ kubeadm join 172.16.98.2:6443 --token udl1vd.ln1kzbtertnzbfmi --discovery-token-
 kubectl get node
 ```
 
-### 集群参数设置
+### 集群优化设置
 
 #### kube-proxy模式切换
 
@@ -834,6 +834,18 @@ kubectl edit cm kube-proxy -n kube-system
 ```
 
 将`data.config.conf.mode`设置成`ipvs`保存退出即可。
+
+#### 命令补全
+
+&emsp;&emsp;我们可以下载一些依赖去设置k8s，以便我们日常的shell终端操作。
+
+```bash
+yum -y install bash-completion
+source /usr/share/bash-completion/bash_completion
+source <(kubectl completion bash)
+echo "source <(kubectl completion bash)" >> ~/.bashrc
+source ~/.bashrc 
+```
 
 ### 常见资源
 
@@ -1043,7 +1055,11 @@ spec:
 
 #### Service
 
-&emsp;&emsp;Kubernete Service 是一个定义了一组Pod的策略的抽象，我们也有时候叫做宏观服务。
+&emsp;&emsp;Kubernete Service (简称svc)是一个定义了一组Pod的策略的抽象，我们也有时候叫做宏观服务。它有四种类型，下面分别介绍。
+
+##### ClusterIP
+
+&emsp;&emsp;它会生成一个VIP，所以只能实现集群内部访问。它是默认的类型。
 
 ```yaml
 apiVersion: v1 # 指定api版本，此值必须在kubectl api-versions中 
@@ -1063,3 +1079,35 @@ spec: # 资源规范字段
   selector: # 选择器
     app: demo
 ```
+
+##### NodePort
+
+&emsp;&emsp;这种类型需要指定一个端口（--service-node-port-range标志指定的范围内分配端口，默认值：30000-32767），此类型可以实现外部访问。它的优点很明显，可以让外部访问此服务，但是一个集群中，服务多了，端口就会变得难以管理。
+
+```yaml
+apiVersion: v1 # 指定api版本，此值必须在kubectl api-versions中 
+kind: Service # 指定创建资源的角色/类型 
+metadata: # 资源的元数据/属性
+  name: demo-node-port # 资源的名字，在同一个namespace中必须唯一
+  namespace: default # 部署在哪个namespace中
+  labels: # 设定资源的标签
+    app: demo
+spec: # 资源规范字段
+  type: NodePort # ClusterIP 类型
+  ports:
+  - port: 8080 # service 端口
+    targetPort: 8080 # 容器暴露的端口
+    protocol: TCP # 协议
+    nodePort: 30001
+    name: http # 端口名称
+  selector: # 选择器
+    app: demo
+```
+
+##### ExternalName
+
+&emsp;&emsp;适用于集群内部容器访问外部资源，这里我没有用到，不做多深究。
+
+##### LoadBalancer
+
+&emsp;&emsp;适用于公有云上的 Kubernetes 服务，这里我没有用到，不做多深究。
